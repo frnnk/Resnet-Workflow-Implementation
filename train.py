@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as nnf
 from torch.utils.data import Dataset, DataLoader
 import torchvision.io as io
+import torch.optim as op
 import pandas as pd
 import os
 
@@ -168,7 +169,7 @@ class ImageDataset(Dataset):
     def __len__(self):
         return len(self.labels)
 
-    def __get__(self, index):
+    def __getitem__(self, index):
         img_path = os.path.join(self.img_dir, self.labels.iloc[index, 0])
         ground_truth = self.labels.iloc[index, 1]
         image = io.read_image(img_path)
@@ -178,14 +179,35 @@ class ImageDataset(Dataset):
         return image, ground_truth
 
 
-def train(tensor):
-    pass
+def train(epochs, dataloader, model):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Currently using {device} to run training")
+    # detect gpu presence, default is cpu
+    
+    loss_function = nn.CrossEntropyLoss() # can implement manual weighing later
+    optimizer = op.Adam(model.parameters())
+    model.to(device)
+
+    for _ in range(epochs):
+        for image_tensor, ground_truth in dataloader:
+            image_tensor, ground_truth = image_tensor.to(device), ground_truth.to(device)
+            optimizer.zero_grad()
+
+            logits_output = model(image_tensor)
+            avg_loss = loss_function(logits_output, target=ground_truth)
+            avg_loss.backwards()
+            optimizer.step()
+
 
 if __name__ == "__main__":
     ten = torch.rand((3, 3, 6, 6))
     # x = Bottleneck(1, 2)
     y = ResNet(Bottleneck, [1,1,1,1], 3)
-    res = y(ten)
-    softmax = nnf.softmax(res, dim=1)
-    print(softmax)
+    for param in y.parameters():
+        print(param)
+
+
+    # res = y(ten)
+    # softmax = nnf.softmax(res, dim=1)
+    # print(softmax)
     pass
