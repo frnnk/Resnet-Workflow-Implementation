@@ -6,6 +6,7 @@ import torchvision.io as io
 import torch.optim as op
 import pandas as pd
 import os
+import tempfile
 
 class Bottleneck(nn.Module):
     """
@@ -179,32 +180,77 @@ class ImageDataset(Dataset):
         return image, ground_truth
 
 
-def train(epochs, dataloader, model):
+def train(model, epochs, dataloaders, dataset_sizes):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Currently using {device} to run training")
+    print()
     # detect gpu presence, default is cpu
     
     loss_function = nn.CrossEntropyLoss() # can implement manual weighing later
     optimizer = op.Adam(model.parameters())
     model.to(device)
 
-    for _ in range(epochs):
-        for image_tensor, ground_truth in dataloader:
-            image_tensor, ground_truth = image_tensor.to(device), ground_truth.to(device)
-            optimizer.zero_grad()
+    with tempfile.TemporaryDirectory as temp_dir:
+        best_model_path = os.path.join(temp_dir, "best_model.pt")
+        torch.save(model.state_dict(), best_model_path)
+        best_acc = 0.0
 
-            logits_output = model(image_tensor)
-            avg_loss = loss_function(logits_output, target=ground_truth)
-            avg_loss.backwards()
-            optimizer.step()
+        for epoch_num in range(epochs):
+            print(f"Epoch {epoch_num} / {epochs-1}")
+            print("------------------------------------------")
+
+            for phase in ["train", "validate"]:
+                if phase == "train":
+                    model.train()
+                else:
+                    model.eval()
+                
+                total_loss = 0.0
+                total_corrects = 0
+
+                for image_tensor, ground_truth in dataloaders[phase]:
+                    image_tensor, ground_truth = image_tensor.to(device), ground_truth.to(device)
+                    optimizer.zero_grad()
+                    
+                    with torch.set_grad_enabled(phase == "train"):
+                        logits_output = model(image_tensor)
+                        avg_loss = loss_function(logits_output, target=ground_truth)
+                        _, prediction_tensor = torch.max(logits_output, 1)
+
+                        if phase == "train":
+                            avg_loss.backwards()
+                            optimizer.step()
+                    
+                    total_loss += avg_loss.item() * image_tensor.size(0)
+                    total_corrects += torch.sum(prediction_tensor == ground_truth)
+
+                avg_phase_loss = total_loss / dataset_sizes[phase]
+                avg_phase_acc = total_corrects.to(torch.float64) / dataset_sizes[phase]
+                print(f"{phase} loss: {avg_phase_loss},    {phase} accuracy: {avg_phase_acc}")
+
+                if phase == "validate" and avg_phase_acc > best_acc:
+                    best_acc = avg_phase_acc
+                    torch.save(model.state_dict(), best_model_path)
+
+        print()
+        print(f"Best validation accuracy: {best_acc}")
+        model.load_state_dict(torch.load(best_model_path))
+    
+    return model
+            
+
+                
+
 
 
 if __name__ == "__main__":
-    ten = torch.rand((3, 3, 6, 6))
-    # x = Bottleneck(1, 2)
-    y = ResNet(Bottleneck, [1,1,1,1], 3)
-    for param in y.parameters():
-        print(param)
+    # ten = torch.rand((3, 3, 6, 6))
+    # # x = Bottleneck(1, 2)
+    # y = ResNet(Bottleneck, [1,1,1,1], 3)
+    # for param in y.parameters():
+    #     print(param)
+
+    
 
 
     # res = y(ten)
