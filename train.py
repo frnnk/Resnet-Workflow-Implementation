@@ -250,9 +250,17 @@ if __name__ == "__main__":
     # for param in y.parameters():
     #     print(param)
 
+    # val = ImageDataset("PATH to validation_img_dir")
+    # trains = ImageDataset("PATH to train_img_dir")
+    # dataval = DataLoader(val, batch_size=4)
+    # datatrain = DataLoader(trains, batch_size=4)
+    # dataloaders = {"train": datatrain,
+    #                "validate": datatrain}
+    # dataset_sizes = {"train": len(trains),
+    #                  "validate": len(val)}
+    # resnet_model = ResNet(Bottleneck, [3,4,6,3], 2)
+    # model = train(resnet_model, EPOCH_NUM, dataloaders=dataloaders, dataset_sizes=dataset_sizes)
     
-
-
     # res = y(ten)
     # softmax = nnf.softmax(res, dim=1)
     # print(softmax)

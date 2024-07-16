@@ -9,7 +9,7 @@ import re
 from PIL import Image
 
 
-def preprocess_images(img_folder: str, herring: bool, greyscale: bool, resize_val: int = 224) -> None:
+def preprocess_images(img_folder: str, save_path: str, herring: bool, greyscale: bool, augments: bool, resize_val: int = 224) -> None:
     """
     Converts a directory of either herring or non-herring images to greyscale 
     and then stores a copy in the specified PATH. Also appends a csv file that assigns
@@ -17,15 +17,21 @@ def preprocess_images(img_folder: str, herring: bool, greyscale: bool, resize_va
 
     PARAMETERS:
     ---------------------
-    img_folder: file path of the image folder containing all the images
+    img_folder: file path of the image directory containing all the images
+
+    save_path: file path of the destination, can append multiple batches of images into a save dir
     
-    herring: either True or False, representing if the image folder is either all herring
+    herring: either True or False, representing if the image directory is either all herring
     or all non-herring
 
     greyscale: either True or False, representing if the images should all be converted
     to greyscale
+
+    augments: either True or False, representing if the images should be augmented with transformations
+
+    resize_val (optional): resizes all images to this size (square) and is set to 224 by default
     """
-    PATH = "./data/processed/simple_augment"
+    PATH = save_path
     rows_to_add = []
     counter = 0
     
@@ -39,7 +45,7 @@ def preprocess_images(img_folder: str, herring: bool, greyscale: bool, resize_va
             # load image using OpenCV
 
             tensor = convert_cvimg_to_tensor_image(img, greyscale)
-            tensor = resize_and_augment_image(tensor, resize_val)
+            tensor = resize_and_augment_image(tensor, resize_val, augments)
             tvu.save_image(tensor, final_path)
 
             counter += 1
@@ -86,7 +92,7 @@ def convert_cvimg_to_tensor_image(cv_image, greyscale):
     return tensor
 
 
-def resize_and_augment_image(tensor, resize_val):
+def resize_and_augment_image(tensor, resize_val, augments):
     """
     Given an input tensor (float values between 0 and 1), resizes the image and
     augments it by performing a series of transformations with a set probability
@@ -97,8 +103,12 @@ def resize_and_augment_image(tensor, resize_val):
     resize_val: pixel val to resize tensor image to (square)
     """
     resize = v2.Resize((resize_val, resize_val))
-    random_flip = v2.RandomHorizontalFlip(0.5)
-    return random_flip(resize(tensor))
+
+    if augments:
+        transform = v2.RandomHorizontalFlip(0.5)
+        return transform(resize(tensor))
+    else:
+        return resize(tensor)
 
 
 def remove_empty_images(img_folder):
@@ -185,8 +195,17 @@ def crop(test_file: str) -> None:
 
 
 if __name__ == "__main__":
-    EX_PATH = "./example_bass.jpg"
-    O_PATH = "./test_folder copy/images"
+    # SAVE_PATH = "./data/processed/validate"
+    # valid_image_dirs = {
+    #     "./data/raw/herring/filtered/RiverHerring_BlackNWhite_Set3/valid/images": True,
+    #     "./data/raw/non_herring/BassDataset1/valid/images": False,
+    #     "./data/raw/non_herring/SalmonDataset1/valid\images": False
+    # }
+
+    # for img_dir, ground_truth in valid_image_dirs.items():
+    #     preprocess_images(img_dir, SAVE_PATH, ground_truth, True, False)
+
+
     # fir_path = "./data/raw/herring/filtered/RiverHerring_BlackNWhite_Set3/train"
 
     # remove_empty_images(fir_path)
@@ -203,9 +222,9 @@ if __name__ == "__main__":
     # data = "./data/raw/non_herring/BassDataset1/train/images"
     # preprocess_images(data, herring=False, greyscale=True)
 
-    classes = "./data/processed/simple_augment/classes.csv"
-    df = pd.read_csv(classes)
-    print(len(df))
+    # classes = "./data/processed/simple_augment/classes.csv"
+    # df = pd.read_csv(classes)
+    # print(len(df))
 
     # data = pd.read_csv("./data/processed/classes.csv")
     # for index, line in data.iterrows():
