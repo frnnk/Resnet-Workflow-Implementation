@@ -190,7 +190,7 @@ def train(model, epochs, dataloaders, dataset_sizes):
     optimizer = op.Adam(model.parameters())
     model.to(device)
 
-    with tempfile.TemporaryDirectory as temp_dir:
+    with tempfile.TemporaryDirectory() as temp_dir:
         best_model_path = os.path.join(temp_dir, "best_model.pt")
         torch.save(model.state_dict(), best_model_path)
         best_acc = 0.0
@@ -239,9 +239,7 @@ def train(model, epochs, dataloaders, dataset_sizes):
     return model
             
 
-                
-
-
+            
 
 if __name__ == "__main__":
     # ten = torch.rand((3, 3, 6, 6))
@@ -250,16 +248,19 @@ if __name__ == "__main__":
     # for param in y.parameters():
     #     print(param)
 
-    # val = ImageDataset("PATH to validation_img_dir")
-    # trains = ImageDataset("PATH to train_img_dir")
-    # dataval = DataLoader(val, batch_size=4)
-    # datatrain = DataLoader(trains, batch_size=4)
-    # dataloaders = {"train": datatrain,
-    #                "validate": datatrain}
-    # dataset_sizes = {"train": len(trains),
-    #                  "validate": len(val)}
-    # resnet_model = ResNet(Bottleneck, [3,4,6,3], 2)
-    # model = train(resnet_model, EPOCH_NUM, dataloaders=dataloaders, dataset_sizes=dataset_sizes)
+    val = ImageDataset("./validate")
+    trains = ImageDataset("./train")
+    dataval = DataLoader(val, batch_size=4)
+    datatrain = DataLoader(trains, batch_size=4)
+    dataloaders = {"train": datatrain,
+                   "validate": datatrain}
+    dataset_sizes = {"train": len(trains),
+                     "validate": len(val)}
+    resnet_model = ResNet(Bottleneck, [3,4,6,3], 2)
+    print("setup done")
+    model = train(resnet_model, 3, dataloaders=dataloaders, dataset_sizes=dataset_sizes)
+    torch.save(model.state_dict(), "./test.pt")
+    print("done!")
     
     # res = y(ten)
     # softmax = nnf.softmax(res, dim=1)
