@@ -119,6 +119,7 @@ class ResNet(nn.Module):
 
         Input tensor: (batch number, channels, height, width)
         """
+        tensor = tensor.float()
         tensor = self.relu(self.norm_1(self.conv_1(tensor)))
         tensor = self.max_pooling(tensor)
         # initial configuration
@@ -207,8 +208,12 @@ def train(model, epochs, dataloaders, dataset_sizes):
                 
                 total_loss = 0.0
                 total_corrects = 0
+                count = 0
 
                 for image_tensor, ground_truth in dataloaders[phase]:
+                    count += 1
+                    if count % 10 == 0:
+                        print(f"phase: {phase}, #{count}")
                     image_tensor, ground_truth = image_tensor.to(device), ground_truth.to(device)
                     optimizer.zero_grad()
                     
@@ -218,7 +223,7 @@ def train(model, epochs, dataloaders, dataset_sizes):
                         _, prediction_tensor = torch.max(logits_output, 1)
 
                         if phase == "train":
-                            avg_loss.backwards()
+                            avg_loss.backward()
                             optimizer.step()
                     
                     total_loss += avg_loss.item() * image_tensor.size(0)
@@ -248,8 +253,8 @@ if __name__ == "__main__":
     # for param in y.parameters():
     #     print(param)
 
-    val = ImageDataset("./validate")
-    trains = ImageDataset("./train")
+    val = ImageDataset("./data/processed/validate")
+    trains = ImageDataset("./data/processed/train")
     dataval = DataLoader(val, batch_size=4)
     datatrain = DataLoader(trains, batch_size=4)
     dataloaders = {"train": datatrain,
