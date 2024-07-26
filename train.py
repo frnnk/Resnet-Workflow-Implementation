@@ -175,7 +175,7 @@ class ImageDataset(Dataset):
     def __getitem__(self, index):
         img_path = os.path.join(self.img_dir, self.labels.iloc[index, 0])
         ground_truth = self.labels.iloc[index, 1]
-        image = io.read_image(img_path)
+        image = io.read_image(img_path).float()
         if self.transform:
             image = self.transform(image)
         
@@ -189,7 +189,7 @@ def train(model, epochs, dataloaders, dataset_sizes):
     # detect gpu presence, default is cpu
     
     loss_function = nn.CrossEntropyLoss() # can implement manual weighing later
-    optimizer = op.Adam(model.parameters(), lr=0.00001)
+    optimizer = op.Adam(model.parameters(), lr=1e-6)
     model.to(device)
 
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -257,10 +257,17 @@ if __name__ == "__main__":
     # for param in y.parameters():
     #     print(param)
 
-    normalize = v2.Normalize(mean=[0.485, 0.456, 0.406],
+    val_trans = v2.Normalize(mean=[0.485, 0.456, 0.406],
                              std=[0.229, 0.224, 0.225])
-    val = ImageDataset("./validate", transform=normalize)
-    trains = ImageDataset("./train", transform=normalize)
+    train_trans = v2.Compose([
+        v2.RandomVerticalFlip(),
+        v2.RandomRotation(degrees=30),
+        v2.RandomResizedCrop(size=(224,224), scale=(0.7,1)),
+        v2.Normalize(mean=[0.485, 0.456, 0.406],
+                             std=[0.229, 0.224, 0.225]),
+    ])
+    val = ImageDataset("./validate", transform=val_trans)
+    trains = ImageDataset("./train", transform=train_trans)
     dataval = DataLoader(val, batch_size=32)
     datatrain = DataLoader(trains, batch_size=32)
     dataloaders = {"train": datatrain,
@@ -269,7 +276,7 @@ if __name__ == "__main__":
                      "validate": len(val)}
     resnet_model = ResNet(Bottleneck, [3,4,6,3], 2)
     print("setup done")
-    model = train(resnet_model, 1, dataloaders=dataloaders, dataset_sizes=dataset_sizes)
+    model = train(resnet_model, 30, dataloaders=dataloaders, dataset_sizes=dataset_sizes)
     torch.save(model.state_dict(), "./test.pt")
     print("done!")
     
