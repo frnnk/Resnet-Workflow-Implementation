@@ -105,7 +105,10 @@ def resize_and_augment_image(tensor, resize_val, augments):
     resize = v2.Resize((resize_val, resize_val))
 
     if augments:
-        transform = v2.RandomHorizontalFlip(0.5)
+        transform = v2.Compose([
+            v2.RandomHorizontalFlip(0.5),
+        ])
+        
         return transform(resize(tensor))
     else:
         return resize(tensor)

@@ -5,6 +5,7 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision.io as io
 import torch.optim as op
 import pandas as pd
+import torchvision.transforms.v2 as v2
 import os
 import tempfile
 
@@ -249,7 +250,6 @@ def train(model, epochs, dataloaders, dataset_sizes):
             
 
             
-
 if __name__ == "__main__":
     # ten = torch.rand((3, 3, 6, 6))
     # # x = Bottleneck(1, 2)
@@ -257,8 +257,10 @@ if __name__ == "__main__":
     # for param in y.parameters():
     #     print(param)
 
-    val = ImageDataset("./validate")
-    trains = ImageDataset("./train")
+    normalize = v2.Normalize(mean=[0.485, 0.456, 0.406],
+                             std=[0.229, 0.224, 0.225])
+    val = ImageDataset("./validate", transform=normalize)
+    trains = ImageDataset("./train", transform=normalize)
     dataval = DataLoader(val, batch_size=32)
     datatrain = DataLoader(trains, batch_size=32)
     dataloaders = {"train": datatrain,
@@ -267,7 +269,7 @@ if __name__ == "__main__":
                      "validate": len(val)}
     resnet_model = ResNet(Bottleneck, [3,4,6,3], 2)
     print("setup done")
-    model = train(resnet_model, 15, dataloaders=dataloaders, dataset_sizes=dataset_sizes)
+    model = train(resnet_model, 1, dataloaders=dataloaders, dataset_sizes=dataset_sizes)
     torch.save(model.state_dict(), "./test.pt")
     print("done!")
     
