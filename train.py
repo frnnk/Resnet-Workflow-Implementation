@@ -188,7 +188,7 @@ def train(model, epochs, dataloaders, dataset_sizes):
     # detect gpu presence, default is cpu
     
     loss_function = nn.CrossEntropyLoss() # can implement manual weighing later
-    optimizer = op.Adam(model.parameters())
+    optimizer = op.Adam(model.parameters(), lr=0.00001)
     model.to(device)
 
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -211,9 +211,9 @@ def train(model, epochs, dataloaders, dataset_sizes):
                 count = 0
 
                 for image_tensor, ground_truth in dataloaders[phase]:
-                    count += 1
-                    if count % 10 == 0:
-                        print(f"phase: {phase}, #{count}")
+                    # count += 1
+                    # if count % 30 == 0:
+                    #     print(f"phase: {phase}, #{count}")
                     image_tensor, ground_truth = image_tensor.to(device), ground_truth.to(device)
                     optimizer.zero_grad()
                     
@@ -221,16 +221,20 @@ def train(model, epochs, dataloaders, dataset_sizes):
                         logits_output = model(image_tensor)
                         avg_loss = loss_function(logits_output, target=ground_truth)
                         _, prediction_tensor = torch.max(logits_output, 1)
+                        # if phase == "train":
+                        #     print(f"phase: {phase}, tensor: {logits_output}")
 
                         if phase == "train":
                             avg_loss.backward()
                             optimizer.step()
                     
                     total_loss += avg_loss.item() * image_tensor.size(0)
+            
                     total_corrects += torch.sum(prediction_tensor == ground_truth)
 
                 avg_phase_loss = total_loss / dataset_sizes[phase]
                 avg_phase_acc = total_corrects.to(torch.float64) / dataset_sizes[phase]
+                print(total_corrects, dataset_sizes[phase])
                 print(f"{phase} loss: {avg_phase_loss},    {phase} accuracy: {avg_phase_acc}")
 
                 if phase == "validate" and avg_phase_acc > best_acc:
@@ -253,17 +257,17 @@ if __name__ == "__main__":
     # for param in y.parameters():
     #     print(param)
 
-    val = ImageDataset("./data/processed/validate")
-    trains = ImageDataset("./data/processed/train")
-    dataval = DataLoader(val, batch_size=4)
-    datatrain = DataLoader(trains, batch_size=4)
+    val = ImageDataset("./validate")
+    trains = ImageDataset("./train")
+    dataval = DataLoader(val, batch_size=32)
+    datatrain = DataLoader(trains, batch_size=32)
     dataloaders = {"train": datatrain,
-                   "validate": datatrain}
+                   "validate": dataval}
     dataset_sizes = {"train": len(trains),
                      "validate": len(val)}
     resnet_model = ResNet(Bottleneck, [3,4,6,3], 2)
     print("setup done")
-    model = train(resnet_model, 3, dataloaders=dataloaders, dataset_sizes=dataset_sizes)
+    model = train(resnet_model, 15, dataloaders=dataloaders, dataset_sizes=dataset_sizes)
     torch.save(model.state_dict(), "./test.pt")
     print("done!")
     
