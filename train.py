@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as nnf
+import torchvision.models as models
 from torch.utils.data import Dataset, DataLoader
 import torchvision.io as io
 import torch.optim as op
@@ -11,6 +11,7 @@ import tempfile
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+
 
 
 class Bottleneck(nn.Module):
@@ -191,9 +192,9 @@ def train_model(model, epochs, dataloaders, dataset_sizes):
     print(f"Currently using {device} to run training")
     print()
     # detect gpu presence, default is cpu
-    
+
     loss_function = nn.CrossEntropyLoss() # can implement manual weighing later
-    optimizer = op.Adam(model.parameters(), lr=1e-6)
+    optimizer = op.Adam([param for param in model.parameters() if param.requires_grad], lr=1e-5)
     scheduler = op.lr_scheduler.StepLR(optimizer=optimizer, step_size=12, gamma=0.5)
     model.to(device)
 
@@ -278,12 +279,6 @@ def train_model(model, epochs, dataloaders, dataset_sizes):
 
             
 if __name__ == "__main__":
-    # ten = torch.rand((3, 3, 6, 6))
-    # # x = Bottleneck(1, 2)
-    # y = ResNet(Bottleneck, [1,1,1,1], 3)
-    # for param in y.parameters():
-    #     print(param)
-
     val_trans = v2.Normalize(mean=[0.485, 0.456, 0.406],
                              std=[0.229, 0.224, 0.225])
     train_trans = v2.Compose([
@@ -301,12 +296,18 @@ if __name__ == "__main__":
                    "validate": dataval}
     dataset_sizes = {"train": len(trains),
                      "validate": len(val)}
-    resnet_model = ResNet(Bottleneck, [3,4,6,3], 2)
-    model = train_model(resnet_model, 15, dataloaders=dataloaders, dataset_sizes=dataset_sizes)
+
+    # resnet_model = ResNet(Bottleneck, [3,4,6,3], 2)
+    resnet_model = models.resnet50(weights="IMAGENET1K_V1")
+    resnet_model.fc = nn.Linear(resnet_model.fc.in_features, 2)
+    for param in resnet_model.parameters():
+        param.requires_grad = False
+    resnet_model.fc.weight.requires_grad = True
+    resnet_model.fc.bias.requires_grad = True
+
+
+    model = train_model(resnet_model, 30, dataloaders=dataloaders, dataset_sizes=dataset_sizes)
     torch.save(model.state_dict(), "./test.pt")
     print("done!")
     
-    # res = y(ten)
-    # softmax = nnf.softmax(res, dim=1)
-    # print(softmax)
     pass
