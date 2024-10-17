@@ -115,6 +115,9 @@ def resize_and_augment_image(tensor, resize_val, augments):
 
 
 def remove_empty_images(img_folder):
+    """
+    Removes images that do not have labels
+    """
     label_path = os.path.join(img_folder, "labels")
     image_path = os.path.join(img_folder, "images")
     counter = 0
@@ -147,7 +150,7 @@ def otsu_thresholding(img_folder: str, herring: bool) -> None:
         if not os.path.exists(final_path):
             otsu = cv2.threshold(img_path, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
             cv2.imwrite(final_path, otsu)
-# incomplete for now (will work on later)
+# incomplete for now (will work on later), probably scrapped
 
 
 def crop(test_file: str) -> None:
@@ -194,7 +197,7 @@ def crop(test_file: str) -> None:
                 count += 1
                 img_crop.save(save_path)
                 # saves cropped image to results folder
-# outdated
+# outdated, can result in low-qualty images, need to find a better way to smartly crop
 
 
 if __name__ == "__main__":
@@ -205,6 +208,7 @@ if __name__ == "__main__":
     #     "./data/raw/non_herring/SalmonDataset1/valid\images": False
     # }
 
+    # PROCESS IMAGES LIKE THIS
     # for img_dir, ground_truth in valid_image_dirs.items():
     #     preprocess_images(img_dir, SAVE_PATH, ground_truth, True, False)
 

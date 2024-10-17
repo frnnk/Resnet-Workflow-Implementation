@@ -194,15 +194,16 @@ def train_model(model, epochs, dataloaders, dataset_sizes):
     # detect gpu presence, default is cpu
 
     loss_function = nn.CrossEntropyLoss() # can implement manual weighing later
-    optimizer = op.Adam([param for param in model.parameters() if param.requires_grad], lr=1e-5)
-    scheduler = op.lr_scheduler.StepLR(optimizer=optimizer, step_size=12, gamma=0.5)
+    optimizer = op.Adam([param for param in model.parameters() if param.requires_grad], lr=1e-6) # target unfrozen param
+    # scheduler = op.lr_scheduler.StepLR(optimizer=optimizer, step_size=24, gamma=0.5)
+    scheduler = op.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer, patience=3, threshold=1e-3) # 0.01
     model.to(device)
 
     with tempfile.TemporaryDirectory() as temp_dir:
         best_model_path = os.path.join(temp_dir, "best_model.pt")
         torch.save(model.state_dict(), best_model_path)
         best_acc, bhgr, bhgw, bnhgr, bnhgw, rights = 0.0, 0, 0, 0, 0, 0
-
+        # bhgw = # of {was herring, guessed wrong}
         for epoch_num in range(epochs):
             print(f"Epoch {epoch_num} / {epochs-1}")
             print(f"Learning rate: {scheduler.get_last_lr()}")
@@ -253,13 +254,16 @@ def train_model(model, epochs, dataloaders, dataset_sizes):
                 print(f"{phase} loss: {avg_phase_loss},    {phase} accuracy: {avg_phase_acc}\n")
 
 
-                if phase == "train":
-                    scheduler.step()
+                # if phase == "train":
+                    # scheduler.step(avg_phase_loss)
 
                 if phase == "validate" and (hgr+nhgr) > rights:
                     best_acc, rights = avg_phase_acc, hgr+nhgr
                     torch.save(model.state_dict(), best_model_path)
                     bhgr, bhgw, bnhgr, bnhgw = hgr, hgw, nhgr, nhgw
+                
+                if phase == "validate":
+                    scheduler.step(avg_phase_loss)
 
         print()
         print(f"Best validation accuracy: {best_acc}")
@@ -279,18 +283,20 @@ def train_model(model, epochs, dataloaders, dataset_sizes):
 
             
 if __name__ == "__main__":
-    val_trans = v2.Normalize(mean=[0.485, 0.456, 0.406],
-                             std=[0.229, 0.224, 0.225])
-    train_trans = v2.Compose([
-        v2.RandomVerticalFlip(),
-        v2.RandomRotation(degrees=30),
-        v2.RandomResizedCrop(size=(224,224), scale=(0.7,1)),
-        v2.Normalize(mean=[0.485, 0.456, 0.406],
-                             std=[0.229, 0.224, 0.225]),
-    ])
-    val = ImageDataset("./validate", transform=val_trans)
-    trains = ImageDataset("./train", transform=train_trans)
-    dataval = DataLoader(val, batch_size=128)
+    # val_trans = v2.Normalize(mean=[0.485, 0.456, 0.406],
+    #                          std=[0.229, 0.224, 0.225])
+    # train_trans = v2.Compose([
+    #     v2.RandomVerticalFlip(),
+    #     v2.RandomRotation(degrees=30),
+    #     v2.RandomResizedCrop(size=(224,224), scale=(0.7,1)),
+    #     v2.Normalize(mean=[0.485, 0.456, 0.406],
+    #                          std=[0.229, 0.224, 0.225]),
+    # ])
+    # sample augmentation
+
+    val = ImageDataset("./updated_val")
+    trains = ImageDataset("./updated_train")
+    dataval = DataLoader(val, batch_size=32)
     datatrain = DataLoader(trains, batch_size=32)
     dataloaders = {"train": datatrain,
                    "validate": dataval}
@@ -298,16 +304,19 @@ if __name__ == "__main__":
                      "validate": len(val)}
 
     # resnet_model = ResNet(Bottleneck, [3,4,6,3], 2)
+    # train from scratch
+
     resnet_model = models.resnet50(weights="IMAGENET1K_V1")
     resnet_model.fc = nn.Linear(resnet_model.fc.in_features, 2)
-    for param in resnet_model.parameters():
-        param.requires_grad = False
+    for name, param in resnet_model.named_parameters():
+        if "layer1" in name or "conv1" in name:
+            param.requires_grad = False
     resnet_model.fc.weight.requires_grad = True
     resnet_model.fc.bias.requires_grad = True
+    # transfer learning from IMAGENET, it is also possible to manually train from scratch and then conduct transfer learning
 
-
-    model = train_model(resnet_model, 30, dataloaders=dataloaders, dataset_sizes=dataset_sizes)
-    torch.save(model.state_dict(), "./test.pt")
+    model = train_model(resnet_model, 65, dataloaders=dataloaders, dataset_sizes=dataset_sizes)
+    torch.save(model.state_dict(), "./test.pt") # figure out a folder save system later
     print("done!")
     
     pass

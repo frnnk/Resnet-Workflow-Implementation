@@ -9,3 +9,5 @@ print(model_dict.keys())
 for name, parameter in model.named_parameters():
     print(name, parameter.shape)
 
+# mostly for debugging purposes for now
+
